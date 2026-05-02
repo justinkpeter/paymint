@@ -1,0 +1,111 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id        String    @id @default(cuid())
+  email     String    @unique
+  name      String?
+  image     String?
+
+  clients   Client[]
+  invoices  Invoice[]
+
+  createdAt DateTime @default(now())
+}
+
+model Client {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id])
+
+  name      String
+  email     String
+  company   String?
+  address   String?
+
+  invoices  Invoice[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+}
+
+model Invoice {
+  id            String        @id @default(cuid())
+  token         String        @unique @default(cuid())
+
+  userId        String
+  user          User          @relation(fields: [userId], references: [id])
+
+  clientId      String
+  client        Client        @relation(fields: [clientId], references: [id])
+
+  invoiceNumber String
+  status        InvoiceStatus @default(DRAFT)
+
+  subtotal      Int
+  taxRate       Float @default(0)
+  taxAmount     Int   @default(0)
+  total         Int
+
+  amountPaid    Int   @default(0)
+
+  issueDate     DateTime @default(now())
+  dueDate       DateTime?
+
+  notes         String?
+
+  viewedAt      DateTime?
+  sentAt        DateTime?
+
+  lineItems     LineItem[]
+  payments      Payment[]   
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([userId])
+  @@index([clientId])
+}
+
+enum InvoiceStatus {
+  DRAFT
+  SENT
+  VIEWED
+  PARTIALLY_PAID   
+  PAID
+}
+
+model LineItem {
+  id          String   @id @default(cuid())
+  invoiceId   String
+  invoice     Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
+
+  description String
+  quantity    Float
+  unitPrice   Int
+  total       Int
+
+  order       Int @default(0)
+}
+
+model Payment {
+  id                    String   @id @default(cuid())
+
+  invoiceId             String
+  invoice               Invoice  @relation(fields: [invoiceId], references: [id])
+
+  stripeSessionId       String   @unique
+  stripePaymentIntentId String?
+
+  amount                Int      
+  status                String
+
+  createdAt             DateTime @default(now())
+}
